@@ -3,6 +3,7 @@
 
 <head>
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta charset="utf-8">
     <title>Pentest Helper - Générateur de fiche</title>
     <meta content="width=device-width, initial-scale=1.0, shrink-to-fit=no" name="viewport" />
     <script src="https://cdn.jsdelivr.net/gh/cvssjs/cvssjs/cvss.js"></script>
@@ -36,9 +37,6 @@
             },
         });
 
-        var score_cvss = 0.0;
-        var image;
-
         window.chartColors = {
             red: 'rgb(255, 99, 132)',
             orange: 'rgb(255, 159, 64)',
@@ -49,44 +47,22 @@
 
         var color = Chart.helpers.color;
 
-        const centerText = {
-            beforeDraw: function (chart) {
-                const width = chart.width
-                const height = chart.height
-                const ctx = chart.ctx
-                ctx.restore()
-                const fontSize = (height / 114).toFixed(2)
-                ctx.font = 'bold ' + fontSize + 'em sans-serif'
-                ctx.textBaseline = 'middle'
-                ctx.fillStyle = 'white'
-                ctx.strokeStyle = 'black'
-                const text = score_cvss
-                const textX = Math.round((width - (ctx.measureText(text).width)) / 2 - 16)
-                const textY = height / 2
-                ctx.fillText(text, textX, textY)
-                ctx.strokeText(text, textX, textY)
-                ctx.save()
-            }
-        }
-
-        var config_radar = {
-            type: 'radar',
+        var config_bar = {
+            type: 'bar',
             data: {
-                labels: [
-                    "Integrity", "Availability", "Access vector", "Attack complexity", "Privileges required", "User interaction", "Scope", "Confidentiality"],
+                labels: ["Low", "Medium", "High", "Critical"],
                 datasets: [{
-                    label: "Score",
-                    backgroundColor: color(window.chartColors.red).alpha(0.2).rgbString(),
-                    borderColor: window.chartColors.red,
-                    pointBackgroundColor: window.chartColors.red,
-                    data: [1, 1, 1, 1, 1, 1, 1, 1],
+                    label: "Number of vulnerabilities",
+                    backgroundColor: [window.chartColors.green, window.chartColors.yellow, window.chartColors.orange, window.chartColors.red],
+                    data: [0, 0, 0, 0],
                 }]
             },
+            plugins: [ChartDataLabels],
             options: {
                 responsive: true,
                 title: {
                     display: true,
-                    text: 'CVSS Score'
+                    text: 'Number of vulnerabilities per severity'
                 },
                 plugins: {
                     legend: {
@@ -94,95 +70,80 @@
                     },
                     tooltip: {
                         enabled: false
+                    },
+                    datalabels: {
+                        font: {
+                            weight: 'bold'
+                        }
                     }
                 },
                 scales: {
-                    r: {
-                        min: -1,
-                        max: 2,
-                        ticks: {
-                            display: false,
-                            stepSize: 1
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        };
+
+        var config_pie = {
+            type: 'pie',
+            data: {
+                datasets: [{
+                    data: [0, 0, 0, 0],
+                    backgroundColor: [window.chartColors.green, window.chartColors.yellow, window.chartColors.orange, window.chartColors.red],
+                    label: 'Dataset 1',
+                }],
+                labels: ["Low", "Medium", "High", "Critical"]
+            },
+            plugins: [ChartDataLabels],
+            options: {
+                responsive: true,
+                title: {
+                    display: true,
+                    text: 'Number of vulnerabilities per severity'
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        enabled: false
+                    },
+                    datalabels: {
+                        font: {
+                            weight: 'bold'
                         }
                     }
                 }
-            },
-            plugins: [centerText]
+            }
         };
 
-
-        var myRadar;
+        var myBar;
+        var myPie;
 
         window.onload = function () {
-            //Chart.register(ChartDataLabels);
-            myRadar = new Chart(document.getElementById("canvas"), config_radar);
-            document.getElementById("metricsTable").style.visibility = "visible";
-            html2canvas(document.getElementById("metricsTable")).then((canvas) => {
-                document.getElementById("previewImage").innerHTML = "";
-                document.getElementById("previewImage").appendChild(canvas);
-            });
-            document.getElementById("metricsTable").style.visibility = "hidden";
+            myBar = new Chart(document.getElementById("canvas_bar"), config_bar);
+            myPie = new Chart(document.getElementById("canvas_pie"), config_pie);
+            action_bar();
+            action_pie();
         };
         var colorNames = Object.keys(window.chartColors);
 
-        function download_radar() {
+
+
+        function download_bar() {
             var a = document.createElement("a");
-            a.href = myRadar.toBase64Image();
+            a.href = myBar.toBase64Image();
             a.download = "Image.png";
             a.click();
         }
 
-        function download_metrics() {
+        function download_pie() {
             var a = document.createElement("a");
-            a.href = document.getElementById("previewImage").childNodes[0].toDataURL();
+            a.href = myPie.toBase64Image();
             a.download = "Image.png";
             a.click();
-        }
-
-        function SelectText(element) {
-            var doc = document;
-            if (doc.body.createTextRange) {
-                var range = document.body.createTextRange();
-                range.moveToElementText(element);
-                range.select();
-            } else if (window.getSelection) {
-                var selection = window.getSelection();
-                var range = document.createRange();
-                range.selectNodeContents(element);
-                selection.removeAllRanges();
-                selection.addRange(range);
-            }
-        }
-
-        function copy(id) {
-            var canvas = document.getElementById(id);
-            var img = document.createElement('img');
-            img.src = canvas.toDataURL()
-            var div = document.createElement('div');
-            div.contentEditable = true;
-            div.appendChild(img);
-            document.body.appendChild(div);
-            // do copy
-            SelectText(div);
-            document.execCommand('Copy');
-            document.body.removeChild(div);
-            new Notify({
-                status: 'success',
-                title: 'Graph copié avec succès',
-                text: '',
-                effect: 'fade',
-                speed: 300,
-                customClass: '',
-                customIcon: '',
-                showIcon: true,
-                showCloseButton: true,
-                autoclose: true,
-                autotimeout: 1500,
-                gap: 20,
-                distance: 20,
-                type: 1,
-                position: 'top right'
-            })
         }
 
     </script>
@@ -199,11 +160,27 @@
             margin-top: 1em;
         }
 
+        .scroll {
+            overflow-x: scroll;
+            overflow-y: hidden;
+        }
+
         canvas {
             -moz-user-select: none;
             -webkit-user-select: none;
             -ms-user-select: none;
             margin: auto;
+            width: fit-content;
+            height: fit-content;
+        }
+
+        #canvas_bar {
+            margin-top: 1%;
+            max-width: 1200px 
+        }
+
+        #canvas_pie {
+            margin-top: 1%;
             width: fit-content;
             height: fit-content;
         }
@@ -223,13 +200,6 @@
             pointer-events: none;
             -webkit-transform: translate(-50%, 0);
             transform: translate(-50%, 0);
-        }
-
-        #chartjs-radar {
-            margin-top: 2%;
-            display: inline-flex;
-            margin: auto;
-            text-align: center;
         }
 
         #vuln_pres {
@@ -391,9 +361,14 @@
                                             <span class="sub-item">Calculatrice CVSS 3.1</span>
                                         </a>
                                     </li>
-                                    <li>
+                                    <li class="active">
                                         <a href="./graphs.html">
                                             <span class="sub-item">Générateur de graphs</span>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="./generateur_vuln.html">
+                                            <span class="sub-item">Générateur de fiche de vulnérabilité</span>
                                         </a>
                                     </li>
                                 </ul>
@@ -408,79 +383,49 @@
         <div class="main-panel" style="margin-top: 6em;">
             <div class="content">
                 <div class="page-inner">
+                    <div id="vuln_pres" class="row" style="color: white;">
+                        <div class="center-box">
+                            <label for="low">Low </label>
+                            <input type="number" name="low" value="0" id="low" style="width: 5em; text-align: center;"
+                                onchange="action_bar(); action_pie()">
+                            <label for="medium">Medium </label>
+                            <input type="number" name="medium" value="0" id="medium"
+                                style="width: 5em; text-align: center;" onchange="action_bar(); action_pie()">
+                            <label for="high">High </label>
+                            <input type="number" name="high" value="0" id="high" style="width: 5em; text-align: center;"
+                                onchange="action_bar(); action_pie()">
+                            <label for="critical">Critical </label>
+                            <input type="number" name="critical" value="0" id="critical"
+                                style="width: 5em; text-align: center;" onchange="action_bar(); action_pie()">
+                        </div>
+                    </div>
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-body">
-                                    <div class="row">
-                                       <div class="form-group" style="width: 100%;">
-                                            <div class="input-group">
-                                                <h3 class="input-group-text" style="width: 17em;">Nom de la vulnérabilité</h3>
-                                                <input type="text" class="form-control"/>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="row">
-                                        <div class="form-group" style="width: 100%;">
-                                            <div class="input-group">
-                                                <h3 class="input-group-text" style="width: 17em;">Description de la vulnérabilité</h3>
-                                                <textarea class="form-control" rows="5"></textarea>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="row">
-                                        <div class="form-group" style="width: 100%;">
-                                            <div class="input-group">
-                                                <h3 class="input-group-text" style="width: 17em;">Etapes pour reproduire le résultat</h3>
-                                                <textarea class="form-control" rows="5"></textarea>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="row">
-                                        <div class="form-group" style="width: 100%;">
-                                            <div class="input-group">
-                                                <h3 class="input-group-text" style="width: 17em;">Impact de la vulnérabilité</h3>
-                                                <textarea class="form-control" rows="3"></textarea>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="row mt-3 mb-3">
-                                        <div id="cvssboard" style="color: black;"></div>
-                                    </div>
-                                    <div class="row">
-                                        <div class="form-group" style="width: 100%;">
-                                            <div class="input-group">
-                                                <h3 class="input-group-text" style="width: 17em;">Recommandations de correction</h3>
-                                                <textarea class="form-control" rows="3"></textarea>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                            <div class="center-box">
+                                <button class="download" onclick="download_bar()"><span
+                                        class="material-symbols-outlined">
+                                        download
+                                    </span></button>
+                                <button class="copy" onclick="copy_bar()"><span class="material-symbols-outlined">
+                                        file_copy
+                                    </span></button>
+                            </div>
+                            <div class="center-box">
+                                <canvas id="canvas_bar"></canvas>
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="card-body">
-                                <div class="center-box">
-                                    <div id="chartjs-radar">
-                                        <canvas id="canvas">
-                                        </canvas>
-                                    </div>
-                                </div>
-                                <div id="previewImage"></div>
-                                <div id="metrics">
-                                    <table class="table" style="visibility:hidden;" id="metricsTable">
-                                        <tr>
-                                            <th>Exploitability</th>
-                                            <th>Impact</th>
-                                            <th>Risk</th>
-                                        </tr>
-                                        <tr>
-                                            <td id="exploitability">0</td>
-                                            <td id="impact">0</td>
-                                            <td id="risk">0</td>
-                                        </tr>
-                                    </table>
-                                </div>
+                            <div class="center-box">
+                                <button class="download" onclick="download_pie()"><span
+                                        class="material-symbols-outlined">
+                                        download
+                                    </span></button>
+                                <button class="copy" onclick="copy_pie()"><span class="material-symbols-outlined">
+                                        file_copy
+                                    </span></button>
+                            </div>
+                            <div class="center-box">
+                                <canvas id="canvas_pie"></canvas>
                             </div>
                         </div>
                     </div>
@@ -529,333 +474,98 @@
 </body>
 
 <script>
-
-    var roundUp1 = function Roundup(input) {
-        var int_input = Math.round(input * 100000);
-        if (int_input % 10000 === 0) {
-            return int_input / 100000
-        } else {
-            return (Math.floor(int_input / 10000) + 1) / 10
+    function SelectText(element) {
+        var doc = document;
+        if (doc.body.createTextRange) {
+            var range = document.body.createTextRange();
+            range.moveToElementText(element);
+            range.select();
+        } else if (window.getSelection) {
+            var selection = window.getSelection();
+            var range = document.createRange();
+            range.selectNodeContents(element);
+            selection.removeAllRanges();
+            selection.addRange(range);
         }
-    };
-
-    var c = new CVSS("cvssboard", {
-        onchange: function () {
-            window.location.hash = c.get().vector;
-            c.vector.setAttribute('href', '#' + c.get().vector)
-            action()
-        }
-    });
-    if (window.location.hash.substring(1).length > 0) {
-        c.set(decodeURIComponent(window.location.hash.substring(1)));
     }
 
-
-
-    function action() {
-        console.clear();
-        var tmp = c.get().vector.split("/");
-        var score = { "AV": 0, "AC": 0, "PR": 0, "UI": 0, "S": 0, "C": 0, "I": 0, "A": 0 };
-        var radar_point = { "AV": 0, "AC": 0, "PR": 0, "UI": 0, "S": 0, "C": 0, "I": 0, "A": 0 };
-        for (let index = 1; index < tmp.length; index++) {
-            var type = tmp[index].split(":")[0];
-            var selection = tmp[index].split(":")[1];
-            switch (type) {
-                case "AV":
-                    switch (selection) {
-                        case "N":
-                            score[type] = 0.85;
-                            radar_point[type] = 2;
-                            break;
-                        case "A":
-                            score[type] = 0.62;
-                            radar_point[type] = 1;
-                            break;
-                        case "L":
-                            score[type] = 0.55;
-                            radar_point[type] = 0;
-                            break;
-                        case "P":
-                            score[type] = 0.2;
-                            radar_point[type] = 0;
-                            break;
-                        default:
-                            break;
-                    }
-                    break;
-                case "AC":
-                    switch (selection) {
-                        case "H":
-                            score[type] = 0.44;
-                            radar_point[type] = 0;
-                            break;
-                        case "L":
-                            score[type] = 0.77;
-                            radar_point[type] = 2;
-                            break;
-                        default:
-                            break;
-                    }
-                    break;
-                case "PR":
-                    switch (selection) {
-                        case "N":
-                            score[type] = "N";
-                            radar_point["PR"] = 2;
-                            break;
-                        case "L":
-                            score[type] = "L";
-                            radar_point["PR"] = 1;
-                            break;
-                        case "H":
-                            score[type] = "H";
-                            radar_point["PR"] = 0;
-                            break;
-                        default:
-                            break;
-                    }
-                case "UI":
-                    switch (selection) {
-                        case "N":
-                            score[type] = 0.85;
-                            radar_point[type] = 2;
-                            break;
-                        case "R":
-                            score[type] = 0.62;
-                            radar_point[type] = 0;
-                            break;
-                        default:
-                            break;
-                    }
-                    break;
-                case "S":
-                    switch (selection) {
-                        case "U":
-                            score[type] = 6.42;
-                            radar_point[type] = 0;
-                            break;
-                        case "C":
-                            score[type] = 7.52;
-                            radar_point[type] = 2;
-                        default:
-                            break;
-                    }
-                    break;
-                case "C":
-                case "I":
-                case "A":
-                    switch (selection) {
-                        case "N":
-                            score[type] = 0.0;
-                            radar_point[type] = 0;
-                            break;
-                        case "L":
-                            score[type] = 0.22;
-                            radar_point[type] = 1;
-                            break;
-                        case "H":
-                            score[type] = 0.56;
-                            radar_point[type] = 2;
-                            break;
-                        default:
-                            break;
-                    }
-                    break;
-                default:
-                    break;
-            }
-
-        }
-
-        if (score["S"] == 6.42) {
-            switch (score["PR"]) {
-                case "N":
-                    score["PR"] = 0.85;
-                    break;
-                case "L":
-                    score["PR"] = 0.62;
-                    break;
-                case "H":
-                    score["PR"] = 0.27;
-                    break;
-                default:
-                    break;
-            }
-        }
-        else {
-            switch (score["PR"]) {
-                case "N":
-                    score["PR"] = 0.85;
-                    break;
-                case "L":
-                    score["PR"] = 0.68;
-                    break;
-                case "H":
-                    score["PR"] = 0.5;
-                    break;
-                default:
-                    break;
-            }
-        }
-
-        score_cvss = c.get().score;
-
-        var impact = 1 - (1 - score["C"]) * (1 - score["I"]) * (1 - score["A"])
-        if (score["S"] == 6.42) {
-            impact = 6.42 * impact;
-        }
-        else {
-            impact = 7.52 * (impact - 0.029) - 3.25 * Math.pow((impact - 0.02), 15);
-        }
-
-        var exploitability = 8.22 * score["AV"] * score["AC"] * score["PR"] * score["UI"];
-
-
-        impact = Math.round(impact * 10) / 10
-
-        var impact_metric = impact;
-        console.log("impact : " + impact)
-
-        if (impact <= 2.5) {
-            impact = "Mineur"
-            document.getElementById("impact").style.color = window.chartColors.green
-        }
-        else if (impact > 2.5 && impact <= 4) {
-            impact = "Important"
-            document.getElementById("impact").style.color = window.chartColors.yellow
-        }
-        else if (impact > 4 && impact <= 5.5) {
-            impact = "Majeur"
-            document.getElementById("impact").style.color = window.chartColors.orange
-        }
-        else {
-            impact = "Critique"
-            document.getElementById("impact").style.color = window.chartColors.red
-        }
-
-        document.getElementById("impact").innerHTML = impact + " " + impact_metric;
-        console.log("impact : " + impact)
-
-        exploitability = Math.round(exploitability * 10) / 10
-
-        var exploitability_metric = exploitability;
-        console.log("exploitability : " + exploitability)
-
-        if (score["S"] == 6.42 && exploitability == 4) {
-            exploitability = exploitability - 1
-        }
-
-        virt_exploitability = exploitability
-
-        if (exploitability <= 1) {
-            exploitability = "Difficile"
-            document.getElementById("exploitability").style.color = window.chartColors.green
-        }
-        else if (exploitability > 1 && exploitability <= 2) {
-            exploitability = "Elevee"
-            document.getElementById("exploitability").style.color = window.chartColors.yellow
-        }
-        else if (exploitability > 2 && exploitability <= 3) {
-            exploitability = "Moyen"
-            document.getElementById("exploitability").style.color = window.chartColors.orange
-        }
-        else {
-            exploitability = "Facile"
-            document.getElementById("exploitability").style.color = window.chartColors.red
-        }
-
-        document.getElementById("exploitability").innerHTML = exploitability + " " + exploitability_metric;
-        console.log("exploitability : " + exploitability)
-
-
-        const risk_matrix = {
-            "Mineur": { "Difficile": "Mineur", "Elevee": "Mineur", "Moyen": "Important", "Facile": "Important" },
-            "Important": { "Difficile": "Mineur", "Elevee": "Important", "Moyen": "Important", "Facile": "Majeur" },
-            "Majeur": { "Difficile": "Important", "Elevee": "Important", "Moyen": "Majeur", "Facile": "Critique" },
-            "Critique": { "Difficile": "Important", "Elevee": "Majeur", "Moyen": "Critique", "Facile": "Critique" }
-        }
-
-        var risk = risk_matrix[impact][exploitability]
-
-        document.getElementById("risk").innerHTML = risk;
-        if (risk == "Mineur") {
-            document.getElementById("risk").style.color = window.chartColors.green
-        }
-        else if (risk == "Important") {
-            document.getElementById("risk").style.color = window.chartColors.yellow
-        }
-        else if (risk == "Majeur") {
-            document.getElementById("risk").style.color = window.chartColors.orange
-        }
-        else {
-            document.getElementById("risk").style.color = window.chartColors.red
-        }
-
-        console.log("risk : " + risk)
-
-        config_radar.data.datasets[0].data[0] = radar_point["I"];
-        config_radar.data.datasets[0].data[1] = radar_point["A"];
-        config_radar.data.datasets[0].data[2] = radar_point["AV"];
-        config_radar.data.datasets[0].data[3] = radar_point["AC"];
-        config_radar.data.datasets[0].data[4] = radar_point["PR"];
-        config_radar.data.datasets[0].data[5] = radar_point["UI"];
-        config_radar.data.datasets[0].data[6] = radar_point["S"];
-        config_radar.data.datasets[0].data[7] = radar_point["C"];
-
-        if (score_cvss <= 3.9) {
-            config_radar.data.datasets[0].backgroundColor = color(window.chartColors.green).alpha(0.2).rgbString(),
-                config_radar.data.datasets[0].borderColor = window.chartColors.green,
-                config_radar.data.datasets[0].pointBackgroundColor = window.chartColors.green
-        }
-        else if (score_cvss >= 4 && score_cvss <= 6.9) {
-            config_radar.data.datasets[0].backgroundColor = color(window.chartColors.yellow).alpha(0.2).rgbString(),
-                config_radar.data.datasets[0].borderColor = window.chartColors.yellow,
-                config_radar.data.datasets[0].pointBackgroundColor = window.chartColors.yellow
-        }
-        else if (score_cvss >= 7 && score_cvss <= 8.9) {
-            config_radar.data.datasets[0].backgroundColor = color(window.chartColors.orange).alpha(0.2).rgbString(),
-                config_radar.data.datasets[0].borderColor = window.chartColors.orange,
-                config_radar.data.datasets[0].pointBackgroundColor = window.chartColors.orange
-        }
-        else {
-            config_radar.data.datasets[0].backgroundColor = color(window.chartColors.red).alpha(0.2).rgbString(),
-                config_radar.data.datasets[0].borderColor = window.chartColors.red,
-                config_radar.data.datasets[0].pointBackgroundColor = window.chartColors.red
-        }
-
-        if (score["S"] == 6.42) {
-            exploitability = virt_exploitability + 1
-        }
-
-        if (exploitability <= 1) {
-            exploitability = "Difficile"
-        }
-        else if (exploitability > 1 && exploitability <= 2) {
-            exploitability = "Elevee"
-        }
-        else if (exploitability > 2 && exploitability <= 3) {
-            exploitability = "Moyen"
-        }
-        else {
-            exploitability = "Facile"
-        }
-
-        // Convert html table to image   
-
-
-        var getCanvas; // global variable
-
-
-        document.getElementById("metricsTable").style.visibility = "visible";
-        html2canvas(document.getElementById("metricsTable")).then((canvas) => {
-            document.getElementById("previewImage").innerHTML = "";
-            document.getElementById("previewImage").appendChild(canvas);
-        });
-        document.getElementById("metricsTable").style.visibility = "hidden";
-        myRadar.update()
-
+    function action_bar() {
+        config_bar.data.datasets[0].data[0] = document.getElementById("low").value;
+        config_bar.data.datasets[0].data[1] = document.getElementById("medium").value;
+        config_bar.data.datasets[0].data[2] = document.getElementById("high").value;
+        config_bar.data.datasets[0].data[3] = document.getElementById("critical").value;
+        myBar.update()
     }
 
+    function copy_bar() {
+        var canvas = document.getElementById("canvas_bar");
+        var img = document.createElement('img');
+        img.src = canvas.toDataURL()
+        var div = document.createElement('div');
+        div.contentEditable = true;
+        div.appendChild(img);
+        document.body.appendChild(div);
+        // do copy
+        SelectText(div);
+        document.execCommand('Copy');
+        document.body.removeChild(div);
+        new Notify({
+            status: 'success',
+            title: 'Graph copié avec succès',
+            text: '',
+            effect: 'fade',
+            speed: 300,
+            customClass: '',
+            customIcon: '',
+            showIcon: true,
+            showCloseButton: true,
+            autoclose: true,
+            autotimeout: 1500,
+            gap: 20,
+            distance: 20,
+            type: 1,
+            position: 'top right'
+        })
+    }
+
+    function action_pie() {
+        config_pie.data.datasets[0].data[0] = document.getElementById("low").value;
+        config_pie.data.datasets[0].data[1] = document.getElementById("medium").value;
+        config_pie.data.datasets[0].data[2] = document.getElementById("high").value;
+        config_pie.data.datasets[0].data[3] = document.getElementById("critical").value;
+        myPie.update()
+    }
+
+    function copy_pie() {
+        var canvas = document.getElementById("canvas_pie");
+        var img = document.createElement('img');
+        img.src = canvas.toDataURL()
+        var div = document.createElement('div');
+        div.contentEditable = true;
+        div.appendChild(img);
+        document.body.appendChild(div);
+        // do copy
+        SelectText(div);
+        document.execCommand('Copy');
+        document.body.removeChild(div);
+        new Notify({
+            status: 'success',
+            title: 'Graph copié avec succès',
+            text: '',
+            effect: 'fade',
+            speed: 300,
+            customClass: '',
+            customIcon: '',
+            showIcon: true,
+            showCloseButton: true,
+            autoclose: true,
+            autotimeout: 1500,
+            gap: 20,
+            distance: 20,
+            type: 1,
+            position: 'top right'
+        })
+    }
 
 </script>
 

@@ -253,7 +253,7 @@ strong {
   color: #f25961 !important;
 }
 label {
-  color: #495057 !important;
+  color: #495057;
   font-size: 14px !important;
 }
 .text-small {
